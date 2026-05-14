@@ -16,4 +16,7 @@ app.get("/", (req, res) => {
   res.json({ message: "API Malbec Connected funcionando" });
 });
 
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
 module.exports = app;
