@@ -14,6 +14,7 @@
   },
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed:publications": "node src/seed/publicationsSeed.js"
   }
 }

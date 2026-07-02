@@ -30,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
     console.error("Error en authMiddleware:", error);
 
     return res.status(401).json({
-      message: "No autorizado. Token inválido",
+      message: "No autorizado. Token invalido",
     });
   }
 };

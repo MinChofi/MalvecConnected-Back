@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { serializeUser } = require("../utils/userSerializer");
 
 const createToken = (userId) => {
   return jwt.sign(
@@ -16,7 +17,7 @@ const register = async (req, res) => {
 
     if (!username || !password) {
       return res.status(400).json({
-        message: "Usuario y contraseña son obligatorios",
+        message: "Usuario y contrasena son obligatorios",
       });
     }
 
@@ -40,10 +41,7 @@ const register = async (req, res) => {
     return res.status(201).json({
       message: "Usuario registrado correctamente",
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-      },
+      user: serializeUser(user),
     });
   } catch (error) {
     console.error("Error en register:", error);
@@ -60,7 +58,7 @@ const login = async (req, res) => {
 
     if (!username || !password) {
       return res.status(400).json({
-        message: "Usuario y contraseña son obligatorios",
+        message: "Usuario y contrasena son obligatorios",
       });
     }
 
@@ -68,7 +66,7 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
-        message: "Credenciales inválidas",
+        message: "Credenciales invalidas",
       });
     }
 
@@ -76,7 +74,7 @@ const login = async (req, res) => {
 
     if (!isPasswordValid) {
       return res.status(401).json({
-        message: "Credenciales inválidas",
+        message: "Credenciales invalidas",
       });
     }
 
@@ -85,10 +83,7 @@ const login = async (req, res) => {
     return res.json({
       message: "Login correcto",
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-      },
+      user: serializeUser(user),
     });
   } catch (error) {
     console.error("Error en login:", error);
@@ -102,7 +97,7 @@ const login = async (req, res) => {
 const me = async (req, res) => {
   try {
     return res.json({
-      user: req.user,
+      user: serializeUser(req.user),
     });
   } catch (error) {
     console.error("Error en me:", error);

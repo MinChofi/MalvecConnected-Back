@@ -13,6 +13,29 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    profile: {
+      fantasyName: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      address: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      phone: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      contactEmail: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
   },
   {
     timestamps: true,
