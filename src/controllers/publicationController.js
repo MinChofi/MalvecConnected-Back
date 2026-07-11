@@ -5,8 +5,6 @@ const Publication = require("../models/Publication");
 const Comment = require("../models/Comment");
 const { normalizeProfile } = require("../utils/userSerializer");
 
-const currentYear = new Date().getFullYear();
-
 const PUBLICATION_TYPES = ["Tinto", "Blanco", "Rosado", "Espumante", "Otro"];
 const PUBLICATION_CATEGORIES = [
   "Recomendación",
@@ -16,6 +14,102 @@ const PUBLICATION_CATEGORIES = [
   "Compra/Venta",
   "Otro",
 ];
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
+const DATA_IMAGE_URL_PATTERN =
+  /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/;
+const FANTASY_NAME_REQUIRED_MESSAGE =
+  "Configura el nombre de fantasia en tu perfil antes de publicar";
+
+const getDataUrlImageSize = (imageUrl) => {
+  const match = DATA_IMAGE_URL_PATTERN.exec(imageUrl);
+
+  if (!match) {
+    return null;
+  }
+
+  const base64Payload = match[2];
+
+  if (base64Payload.length % 4 !== 0) {
+    return null;
+  }
+
+  return Buffer.byteLength(base64Payload, "base64");
+};
+
+const validateImageUrl = (value, helpers) => {
+  if (!value) {
+    return value;
+  }
+
+  const imageSize = getDataUrlImageSize(value);
+
+  if (imageSize === null) {
+    return helpers.error("any.invalid");
+  }
+
+  if (imageSize > MAX_IMAGE_SIZE_BYTES) {
+    return helpers.error("string.max");
+  }
+
+  return value;
+};
+
+const imageUrlSchema = Joi.string()
+  .trim()
+  .allow("")
+  .custom(validateImageUrl, "image data URL validation")
+  .messages({
+    "any.invalid": "La imagen debe ser JPG o PNG",
+    "string.max": "La imagen no puede superar los 2 MB",
+  });
+
+const publicationDateSchema = Joi.date().iso().messages({
+  "date.base": "La fecha no es valida",
+  "date.format": "La fecha no es valida",
+});
+
+const validationMessagesByField = {
+  title: {
+    "any.required": "El titulo es obligatorio",
+    "string.empty": "El titulo es obligatorio",
+    "string.min": "El titulo es obligatorio",
+    "string.max": "El titulo no puede superar los 120 caracteres",
+  },
+  productName: {
+    "any.required": "El producto es obligatorio",
+    "string.empty": "El producto es obligatorio",
+    "string.min": "El producto es obligatorio",
+    "string.max": "El producto no puede superar los 120 caracteres",
+  },
+  description: {
+    "any.required": "La descripcion es obligatoria",
+    "string.empty": "La descripcion es obligatoria",
+    "string.min": "La descripcion es obligatoria",
+    "string.max": "La descripcion no puede superar los 1500 caracteres",
+  },
+  imageUrl: {
+    "any.invalid": "La imagen debe ser JPG o PNG",
+    "string.max": "La imagen no puede superar los 2 MB",
+  },
+  category: {
+    "any.required": "La categoria es obligatoria",
+    "any.only": "La categoria no es valida",
+    "string.empty": "La categoria es obligatoria",
+  },
+  type: {
+    "any.required": "El tipo es obligatorio",
+    "any.only": "El tipo no es valido",
+    "string.empty": "El tipo es obligatorio",
+  },
+  price: {
+    "number.base": "El precio debe ser un numero valido",
+    "number.min": "El precio debe ser mayor o igual a 0",
+  },
+  publicationDate: {
+    "date.base": "La fecha no es valida",
+    "date.format": "La fecha no es valida",
+  },
+};
 
 const validationOptions = {
   abortEarly: false,
@@ -41,36 +135,57 @@ const protectedFields = {
 const publicationCreateSchema = Joi.object({
   title: Joi.string().trim().min(1).max(120).required(),
   productName: Joi.string().trim().min(1).max(120).required(),
-  description: Joi.string().trim().min(1).max(2000).required(),
-  imageUrl: Joi.string().trim().max(2000).allow("").optional(),
+  description: Joi.string().trim().min(1).max(1500).required(),
+  publicationDate: publicationDateSchema.optional(),
+  imageUrl: imageUrlSchema.optional(),
   type: Joi.string().trim().valid(...PUBLICATION_TYPES).required(),
   category: Joi.string().trim().valid(...PUBLICATION_CATEGORIES).required(),
   price: Joi.number().min(0).optional(),
-  year: Joi.number().integer().min(1900).max(currentYear + 1).optional(),
+  year: Joi.any().strip(),
   ...protectedFields,
 }).unknown(false);
 
 const publicationUpdateSchema = Joi.object({
   title: Joi.string().trim().min(1).max(120).optional(),
   productName: Joi.string().trim().min(1).max(120).optional(),
-  description: Joi.string().trim().min(1).max(2000).optional(),
-  imageUrl: Joi.string().trim().max(2000).allow("").optional(),
+  description: Joi.string().trim().min(1).max(1500).optional(),
+  publicationDate: publicationDateSchema.optional(),
+  imageUrl: imageUrlSchema.optional(),
   type: Joi.string().trim().valid(...PUBLICATION_TYPES).optional(),
   category: Joi.string().trim().valid(...PUBLICATION_CATEGORIES).optional(),
   price: Joi.number().min(0).optional(),
-  year: Joi.number().integer().min(1900).max(currentYear + 1).optional(),
+  year: Joi.any().strip(),
   ...protectedFields,
 }).unknown(false);
 
 const commentSchema = Joi.object({
-  authorName: Joi.string().trim().min(1).max(80).required(),
+  authorName: Joi.string().trim().min(1).max(80).strip(),
   content: Joi.string().trim().min(1).max(1000).required(),
-  rating: Joi.number().integer().min(1).max(5).optional(),
+  rating: Joi.number().integer().min(1).max(5).required(),
 }).unknown(false);
 
 const ratingSchema = Joi.object({
   rating: Joi.number().integer().min(1).max(5).required(),
 }).unknown(false);
+
+const getValidationMessage = (detail) => {
+  const field = detail.path[0];
+  const fieldMessages = validationMessagesByField[field];
+
+  return fieldMessages?.[detail.type] ?? detail.message;
+};
+
+const mapValidationErrors = (details) => {
+  return details.reduce((errors, detail) => {
+    const field = detail.path[0] ?? "_form";
+
+    if (!errors[field]) {
+      errors[field] = getValidationMessage(detail);
+    }
+
+    return errors;
+  }, {});
+};
 
 const validate = (schema, body) => {
   const { error, value } = schema.validate(body, validationOptions);
@@ -80,7 +195,7 @@ const validate = (schema, body) => {
   }
 
   return {
-    error: error.details.map((detail) => detail.message),
+    error: mapValidationErrors(error.details),
   };
 };
 
@@ -93,7 +208,9 @@ const validatePublicationUpdate = (body) => {
 
   if (Object.keys(result.value).length === 0) {
     return {
-      error: ["Debe enviar al menos un campo editable"],
+      error: {
+        _form: "Debe enviar al menos un campo editable",
+      },
     };
   }
 
@@ -119,7 +236,10 @@ const getProfilePublicationData = (user) => {
 
   if (!businessName) {
     return {
-      error: "Configurá el nombre de fantasía en tu perfil antes de publicar",
+      error: FANTASY_NAME_REQUIRED_MESSAGE,
+      errors: {
+        wineryName: FANTASY_NAME_REQUIRED_MESSAGE,
+      },
     };
   }
 
@@ -167,7 +287,7 @@ const addRatingToPublication = async (publication, rating) => {
 const getPublications = async (req, res) => {
   try {
     const publications = await Publication.find({ isActive: { $ne: false } })
-      .sort({ createdAt: -1 })
+      .sort({ publicationDate: -1, createdAt: -1 })
       .select("-__v");
 
     return res.json({
@@ -234,6 +354,7 @@ const createPublication = async (req, res) => {
     if (profileData.error) {
       return res.status(400).json({
         message: profileData.error,
+        errors: profileData.errors,
       });
     }
 
@@ -288,6 +409,7 @@ const updatePublication = async (req, res) => {
     if (profileData.error) {
       return res.status(400).json({
         message: profileData.error,
+        errors: profileData.errors,
       });
     }
 
@@ -379,7 +501,9 @@ const addComment = async (req, res) => {
     }
 
     const comment = await Comment.create({
-      ...value,
+      authorName: req.user.username,
+      content: value.content,
+      rating: value.rating,
       publication: publication._id,
     });
 

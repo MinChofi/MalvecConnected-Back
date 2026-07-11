@@ -28,7 +28,7 @@ const demoPublications = [
     type: "Tinto",
     category: "Recomendación",
     price: 12500,
-    year: 2023,
+    publicationDate: new Date("2026-06-10T12:00:00.000Z"),
     isActive: true,
   },
   {
@@ -41,7 +41,7 @@ const demoPublications = [
     type: "Tinto",
     category: "Evento",
     price: 15800,
-    year: 2022,
+    publicationDate: new Date("2026-06-18T12:00:00.000Z"),
     isActive: true,
   },
   {
@@ -54,7 +54,7 @@ const demoPublications = [
     type: "Espumante",
     category: "Compra/Venta",
     price: 9800,
-    year: 2024,
+    publicationDate: new Date("2026-06-25T12:00:00.000Z"),
     isActive: true,
   },
 ];

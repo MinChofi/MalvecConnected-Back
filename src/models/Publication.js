@@ -35,7 +35,13 @@ const publicationSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+      maxlength: 1500,
       default: "",
+    },
+
+    publicationDate: {
+      type: Date,
+      default: Date.now,
     },
 
     imageUrl: {
@@ -77,11 +83,6 @@ const publicationSchema = new mongoose.Schema(
     price: {
       type: Number,
       min: 0,
-    },
-
-    year: {
-      type: Number,
-      min: 1900,
     },
 
     ratingAverage: {

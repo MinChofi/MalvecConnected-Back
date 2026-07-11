@@ -19,7 +19,7 @@ router.post("/", authMiddleware, createPublication);
 router.patch("/:id", authMiddleware, updatePublication);
 router.put("/:id", authMiddleware, updatePublication);
 router.delete("/:id", authMiddleware, deletePublication);
-router.post("/:id/comments", addComment);
+router.post("/:id/comments", authMiddleware, addComment);
 router.post("/:id/rate", ratePublication);
 
 module.exports = router;
