@@ -500,8 +500,20 @@ const addComment = async (req, res) => {
       });
     }
 
+    const fantasyName = req.user.profile?.fantasyName?.trim();
+    const authorName = fantasyName || req.user.username?.trim();
+
+    if (!authorName) {
+      return res.status(400).json({
+        message: "No se pudo identificar el autor del comentario",
+        errors: {
+          authorName: "No se pudo identificar el autor del comentario",
+        },
+      });
+    }
+
     const comment = await Comment.create({
-      authorName: req.user.username,
+      authorName,
       content: value.content,
       rating: value.rating,
       publication: publication._id,
